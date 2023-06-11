@@ -8,7 +8,7 @@ c = conn.cursor()
 
 # Create table
 c.execute('''CREATE TABLE IF NOT EXISTS burnbot
-             (last_processed_block INTEGER)''')
+             (last_processed_block INTEGER, total_burned_coins REAL)''')
 
 # Insert a row of data with the block number -1 (indicating that no blocks have been processed yet) and 0.0 coins (indicating that no coins have been burned yet)
 c.execute("INSERT INTO burnbot (last_processed_block, total_burned_coins) VALUES (?, ?)", (-1, 0.0))
