@@ -5,8 +5,8 @@ import json
 import os
 from aiohttp import BasicAuth
 
-rpc_user = os.getenv('RPC_USER')
-rpc_password = os.getenv('RPC_PASSWORD')
+rpc_user = 'RPC_USER'
+rpc_password = 'RPC_PASSWORD'
 auth = BasicAuth(rpc_user, rpc_password)
 
 intents = discord.Intents.default()

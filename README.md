@@ -17,11 +17,7 @@ Install them using this command:
 
 ## Configuration
 
-Replace RPC_USER and RPC_PASSWORD with your rpcuser and rpcpassword from your local daemon conf file. Alternatively you can set environment variables to your actual RPC username and password before running the script.
-
-```export RPC_USER='your_rpc_username'```
-```export RPC_PASSWORD='your_rpc_password'```
-
+Replace RPC_USER and RPC_PASSWORD with your rpcuser and rpcpassword from your local daemon conf file.
 
 Replace `'your-bot-token'` in `bot.run('your-bot-token')` with the token of your Discord bot. The token can be obtained from the Discord Developer Portal.
 
