@@ -37,4 +37,4 @@ The bot will start and attempt to connect to Discord. Once connected, it will pr
 
 ## Usage
 
-Once the bot is running, it will automatically start checking for burn transactions in the blockchain every 15 seconds (Or whatever you changed it to). When it detects a burn transaction, it will send a message to the discord channel in your Discord server that you designated, with information about the block number, block hash, transaction ID, burned coins in current transaction ID, and the total burned coins.
+Once the blockchain is synced you may start the bot, it will automatically start checking for burn transactions in the blockchain every 15 seconds (Or whatever you changed it to). When it detects a burn transaction, it will send a message to the discord channel in your Discord server that you designated, with information about the block number, block hash, transaction ID, burned coins in current transaction ID, and the total burned coins.

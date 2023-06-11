@@ -22,18 +22,22 @@ async def burn_check():
         try:
             # fetch the latest block
             async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
-                latest_block = (await response.json())['result']['blocks']
+                response_json = await response.json()
+                latest_block = response_json['result']['blocks']
             
             async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [latest_block]}) as response:
-                block_hash = (await response.json())['result']
+                response_json = await response.json()
+                block_hash = response_json['result']
             
             async with session.post('http://localhost:14531', json={'method': 'getblock', 'params': [block_hash]}) as response:
-                block = (await response.json())['result']
+                response_json = await response.json()
+                block = response_json['result']
 
             # iterate through each transaction in the block
             for txid in block['tx']:
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
-                    tx = (await response.json())['result']
+                    response_json = await response.json()
+                    tx = response_json['result']
                 # initialize total burned coins for this transaction
                 total_burned_coins_this_tx = 0
                 # check each output script for the OP_RETURN opcode
@@ -51,8 +55,10 @@ async def burn_check():
                                         f'Transaction ID: {txid}\n'
                                         f'Burned coins in this TX: {total_burned_coins_this_tx}\n'
                                         f'Total burned coins: {global_total_burned_coins}')
-
+        # temp
         except Exception as e:
+            print(f'Response status: {response.status}')
+            print(f'Response text: {await response.text()}')
             print(f'Error: {e}')
 
 # replace with your actual bot token
