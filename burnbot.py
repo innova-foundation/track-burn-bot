@@ -169,6 +169,8 @@ async def calculate_total_burned_coins():
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
                     response_json = await response.json()
                     tx = response_json['result']
+                    last_processed_block = latest_block
+                    update_last_processed_block_in_db(last_processed_block)
                 if tx is None:
                     print(f'Failed to get raw transaction {txid}') # Debug line
             continue  # skip this transaction and move to the next one
