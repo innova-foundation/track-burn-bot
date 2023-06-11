@@ -19,11 +19,13 @@ Install them using this command:
 
 Replace `'your-bot-token'` in `bot.run('your-bot-token')` with the token of your Discord bot. The token can be obtained from the Discord Developer Portal.
 
-Ensure you replace the 15 second interval to your desired interval on line 11
+Ensure you replace the 15 second interval to your desired interval on line 11.
 
-This bot uses getinfo to retrieve blockchain info, if your blockchain uses a newer BTC Core and require the `getblockchaininfo` command be sure to simply replace `getinfo` with `getblockchaininfo` (Or which ever command grabs the blockchain info with the `blocks` data)
+This bot uses getinfo to retrieve blockchain info, if your blockchain uses a newer BTC Core and require the `getblockchaininfo` command be sure to simply replace `getinfo` with `getblockchaininfo` (Or which ever command grabs the blockchain info with the `blocks` data).
 
-Also, ensure that you change the channel name from "burn-transactins" to the channel you want the bot to post to
+Dont forget to replace the Innova RPC port of 14531 with the RPC port of the blockchain you are trying to monitor.
+
+Also, ensure that you change the channel name from "burn-transactins" to the channel you want the bot to post to.
 
 ## Running the Bot
 
