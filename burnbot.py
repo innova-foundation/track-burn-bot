@@ -61,9 +61,9 @@ async def burn_check():
                     global_total_burned_coins += total_burned_coins_this_tx
                     print(f'Detected burn transaction {txid} in block {latest_block} with {total_burned_coins_this_tx} burned coins')  # Debug line
                     # send a message if there were any burned coins in this transaction
-                    channel = discord.utils.get(bot.get_all_channels(), name='burn-transactions')
+                    channel = bot.get_channel(CHANNEL_ID)
                     if channel is None:
-                        print('No channel named "burn-transactions" found')  # Debug line
+                        print(f'No channel with ID {CHANNEL_ID} found')  # Debug line
                     else:
                         print(f'Sending message to channel {channel.id}')  # Debug line
                         await channel.send(f'Burn transaction detected!\n'

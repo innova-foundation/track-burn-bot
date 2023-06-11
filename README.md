@@ -27,7 +27,7 @@ This bot uses getinfo to retrieve blockchain info, if your blockchain uses a new
 
 Dont forget to replace the Innova RPC port of 14531 with the RPC port of the blockchain you are trying to monitor.
 
-Also, ensure that you change the channel name from "burn-transactins" to the channel you want the bot to post to.
+Also, ensure that you change the CHANNEL_ID to the channel you want the bot to post to.
 
 ## Running the Bot
 
