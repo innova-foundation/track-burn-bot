@@ -10,6 +10,10 @@ rpc_password = 'RPC_PASSWORD'
 auth = BasicAuth(rpc_user, rpc_password)
 
 intents = discord.Intents.default()
+intents.typing = False
+intents.presences = False
+intents.messages = True
+intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # initialize total burned coins
@@ -30,10 +34,12 @@ async def burn_check():
             async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
                 response_json = await response.json()
                 latest_block = response_json['result']['blocks']
+                print(f'Checking block {latest_block}')  # Debug line
             
             async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [latest_block]}) as response:
                 response_json = await response.json()
                 block_hash = response_json['result']
+                print(f'Block hash: {block_hash}')  # Debug line
             
             async with session.post('http://localhost:14531', json={'method': 'getblock', 'params': [block_hash]}) as response:
                 response_json = await response.json()
@@ -53,14 +59,19 @@ async def burn_check():
                         total_burned_coins_this_tx += vout['value']
                 if total_burned_coins_this_tx > 0:
                     global_total_burned_coins += total_burned_coins_this_tx
+                    print(f'Detected burn transaction {txid} in block {latest_block} with {total_burned_coins_this_tx} burned coins')  # Debug line
                     # send a message if there were any burned coins in this transaction
                     channel = discord.utils.get(bot.get_all_channels(), name='burn-transactions')
-                    await channel.send(f'Burn transaction detected!\n'
-                                        f'Block number: {latest_block}\n'
-                                        f'Block hash: {block_hash}\n'
-                                        f'Transaction ID: {txid}\n'
-                                        f'Burned coins in this TX: {total_burned_coins_this_tx}\n'
-                                        f'Total burned coins: {global_total_burned_coins}')
+                    if channel is None:
+                        print('No channel named "burn-transactions" found')  # Debug line
+                    else:
+                        print(f'Sending message to channel {channel.id}')  # Debug line
+                        await channel.send(f'Burn transaction detected!\n'
+                                            f'Block number: {latest_block}\n'
+                                            f'Block hash: {block_hash}\n'
+                                            f'Transaction ID: {txid}\n'
+                                            f'Burned coins in this TX: {total_burned_coins_this_tx}\n'
+                                            f'Total burned coins: {global_total_burned_coins}')
         # temp
         except Exception as e:
             print(f'Response status: {response.status}')
