@@ -23,7 +23,7 @@ last_processed_block = -1
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} has connected to Discord!')
+    print(f'{bot.user} has connected to Discord Server!') # Debug line
     await calculate_total_burned_coins()
     burn_check.start()
 
@@ -65,7 +65,7 @@ async def burn_check():
                     print(f'Response JSON for raw transaction: {response_json}')  # Debug line
                     tx = response_json['result']
                 if tx is None:
-                    print(f'Failed to get raw transaction {txid}.')
+                    print(f'Failed to get raw transaction {txid}.') # Debug line
                 continue  # Skip this transaction and move to the next one
                 # check each output script for the OP_RETURN opcode
             for vout in tx['vout']:
@@ -127,17 +127,17 @@ async def calculate_total_burned_coins():
                     response_json = await response.json()
                     tx = response_json['result']
                 if tx is None:
-                    print(f'Failed to get raw transaction {txid}')
+                    print(f'Failed to get raw transaction {txid}') # Debug line
             continue  # skip this transaction and move to the next one
                 # check each output script for the OP_RETURN opcode
-            for vout in tx['vout']:
-                    if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
-                        # add the value of this output to the total burned coins
-                        global_total_burned_coins += vout['value']
-
-            # print out the sync progress and total burned coins so far
-            print(f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}')
-
+        for vout in tx['vout']:
+                if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
+                     # add the value of this output to the total burned coins
+                    global_total_burned_coins += vout['value']
+                    # print out the sync progress and total burned coins so far
+                    print(f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}') # Debug line
+        
+        # update last processed block
         last_processed_block = latest_block
 
 # replace with your actual bot token
