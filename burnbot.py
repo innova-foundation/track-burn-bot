@@ -2,6 +2,12 @@ from discord.ext import commands, tasks
 import discord
 import aiohttp
 import json
+import os
+from aiohttp import BasicAuth
+
+rpc_user = os.getenv('RPC_USER')
+rpc_password = os.getenv('RPC_PASSWORD')
+auth = BasicAuth(rpc_user, rpc_password)
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -18,7 +24,7 @@ async def on_ready():
 async def burn_check():
     global global_total_burned_coins
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(auth=auth) as session:
         try:
             # fetch the latest block
             async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
