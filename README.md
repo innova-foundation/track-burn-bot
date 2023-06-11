@@ -1,42 +1,83 @@
 # track-burn-bot
 
-This bot is designed to detect burn transactions in a blockchain and post information about those transactions to a Discord channel.
+The `track-burn-bot` is a Python-based Discord bot designed to monitor and report burn transactions in a given blockchain. It provides the block number, block hash, transaction ID, the number of burned coins in the transaction, and the total number of burned coins in a given blockchain using a message to a specified Discord channel.
 
 ## Prerequisites
 
-You need Python 3.6 or later to run this bot. You can verify your Python version by running python --version in your command prompt.
+1. Python 3.6 or later: You can verify your Python version by running `python --version` in your command prompt.
+2. Python packages:
+   * discord.py
+   * aiohttp
 
-You also need the following Python packages which can be installed via pip:
+These can be installed via pip using the requirements file:
 
-    discord.py
-    aiohttp
-
-Install them using this command:
-
-```pip install -r requirements.txt```
+```bash
+pip install -r requirements.txt
+```
 
 ## Configuration
 
-Replace RPC_USER and RPC_PASSWORD with your rpcuser and rpcpassword from your local daemon conf file.
+### RPC Configuration
 
-Replace `'your-bot-token'` in `bot.run('your-bot-token')` with the token of your Discord bot. The token can be obtained from the Discord Developer Portal.
+The bot requires connection to a local daemon running the target blockchain. Specify the `rpcuser` and `rpcpassword` from your local daemon's configuration file in `burnbot.py`:
 
-Ensure you replace the 15 second interval to your desired interval on line 11.
+```python
+rpc_user = 'RPC_USER'  # Replace with your rpcuser
+rpc_password = 'RPC_PASSWORD'  # Replace with your rpcpassword
+```
 
-This bot uses getinfo to retrieve blockchain info, if your blockchain uses a newer BTC Core and require the `getblockchaininfo` command be sure to simply replace `getinfo` with `getblockchaininfo` (Or which ever command grabs the blockchain info with the `blocks` data).
+### Discord Bot Token
 
-Dont forget to replace the Innova RPC port of 14531 with the RPC port of the blockchain you are trying to monitor.
+Obtain the token of your Discord bot from the [Discord Developer Portal](https://discord.com/developers/applications) and specify it in `burnbot.py`:
 
-Also, ensure that you change the CHANNEL_ID to the channel you want the bot to post to.
+```python
+bot.run('your-bot-token')  # Replace with your Discord bot token
+```
+
+### Update Interval
+
+The bot checks for burn transactions at a set interval. This can be adjusted on line 11 of `burnbot.py`:
+
+```python
+@tasks.loop(seconds=15)  # Adjust the interval as desired
+```
+
+### Blockchain Information Method
+
+Depending on the version of Bitcoin Core used by the target blockchain, the method to retrieve blockchain information may vary. For newer versions, replace `'getinfo'` with `'getblockchaininfo'` or the appropriate command for your blockchain:
+
+```python
+async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:  # Change 'getinfo' as necessary
+```
+
+### RPC Port
+
+Ensure that the RPC port matches the one used by your target blockchain. The default port is 14531 for Innova:
+
+```python
+async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:  # Change port number as necessary
+```
+
+### Discord Channel ID
+
+Specify the ID of the Discord channel where the bot will post updates:
+
+```python
+channel = bot.get_channel(CHANNEL_ID)  # Replace CHANNEL_ID with your actual Discord channel ID
+```
 
 ## Running the Bot
 
-To start the bot, navigate to the directory containing bot.py in your command prompt and run:
+To start the bot, navigate to the directory containing `burnbot.py` in your terminal and run:
 
-```python burnbot.py```
+```bash
+python burnbot.py
+```
 
-The bot will start and attempt to connect to Discord. Once connected, it will print a message in the command prompt containing its username.
+The bot will attempt to connect to Discord. Upon successful connection, it will print a message in the terminal with its username.
 
 ## Usage
 
-Once the blockchain is synced you may start the bot, it will automatically start checking for burn transactions in the blockchain every 15 seconds (Or whatever you changed it to). When it detects a burn transaction, it will send a message to the discord channel in your Discord server that you designated, with information about the block number, block hash, transaction ID, burned coins in current transaction ID, and the total burned coins.
+Once your blockchain is synced, start the bot. It will automatically begin checking for burn transactions from block 0, once it reaches the most recent block it will start an automated check based on the interval you specified. When it detects a burn transaction, it will send a message to the designated Discord channel with the block number, block hash, transaction ID, number of burned coins in the transaction, and the total number of burned coins in the chain so far.
+
+If you encounter any issues, check the terminal for any error messages or debugging information.

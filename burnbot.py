@@ -5,8 +5,8 @@ import json
 import os
 from aiohttp import BasicAuth
 
-rpc_user = 'RPC_USER'
-rpc_password = 'RPC_PASSWORD'
+rpc_user = 'RPC_USER' #change with your rpcuser
+rpc_password = 'RPC_PASSWORD' #change with your rpcpassword
 auth = BasicAuth(rpc_user, rpc_password)
 
 intents = discord.Intents.default()
@@ -18,15 +18,18 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # initialize total burned coins
 global_total_burned_coins = 0
+# initialize last processed block
+last_processed_block = -1
 
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
+    await calculate_total_burned_coins()
     burn_check.start()
 
 @tasks.loop(seconds=15)  # desired interval
 async def burn_check():
-    global global_total_burned_coins
+    global global_total_burned_coins, last_processed_block
 
     async with aiohttp.ClientSession(auth=auth) as session:
         try:
@@ -34,13 +37,23 @@ async def burn_check():
             async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
                 response_json = await response.json()
                 latest_block = response_json['result']['blocks']
-                print(f'Checking block {latest_block}')  # Debug line
+            
+            # check if the latest block is the same as the last processed block
+            if latest_block == last_processed_block:
+                # if it is, no need to process it again
+                return
+
+            print(f'Checking block {latest_block}')  # Debug line
             
             async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [latest_block]}) as response:
                 response_json = await response.json()
                 block_hash = response_json['result']
                 print(f'Block hash: {block_hash}')  # Debug line
-            
+
+            # Burned coins in the current block
+            total_burned_coins_this_block = 0
+            burn_txid_this_block = None
+
             async with session.post('http://localhost:14531', json={'method': 'getblock', 'params': [block_hash]}) as response:
                 response_json = await response.json()
                 block = response_json['result']
@@ -50,33 +63,75 @@ async def burn_check():
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
                     response_json = await response.json()
                     tx = response_json['result']
-                # initialize total burned coins for this transaction
-                total_burned_coins_this_tx = 0
                 # check each output script for the OP_RETURN opcode
                 for vout in tx['vout']:
                     if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
                         # add the value of this output to the total burned coins
-                        total_burned_coins_this_tx += vout['value']
-                if total_burned_coins_this_tx > 0:
-                    global_total_burned_coins += total_burned_coins_this_tx
-                    print(f'Detected burn transaction {txid} in block {latest_block} with {total_burned_coins_this_tx} burned coins')  # Debug line
-                    # send a message if there were any burned coins in this transaction
-                    channel = bot.get_channel(CHANNEL_ID)
-                    if channel is None:
-                        print(f'No channel with ID {CHANNEL_ID} found')  # Debug line
-                    else:
-                        print(f'Sending message to channel {channel.id}')  # Debug line
-                        await channel.send(f'Burn transaction detected!\n'
-                                            f'Block number: {latest_block}\n'
-                                            f'Block hash: {block_hash}\n'
-                                            f'Transaction ID: {txid}\n'
-                                            f'Burned coins in this TX: {total_burned_coins_this_tx}\n'
-                                            f'Total burned coins: {global_total_burned_coins}')
-        # temp
+                        total_burned_coins_this_block += vout['value']
+                        burn_txid_this_block = txid
+
+            if total_burned_coins_this_block > 0:
+                global_total_burned_coins += total_burned_coins_this_block
+                print(f'Detected burn transaction {burn_txid_this_block} in block {latest_block} with {total_burned_coins_this_block} burned coins')  # Debug line
+                # send a message if there were any burned coins in this transaction
+                channel = bot.get_channel(CHANNEL_ID)
+                if channel is None:
+                    print('No channel found with specified ID')  # Debug line
+                else:
+                    print(f'Sending message to channel {channel.id}')  # Debug line
+                    await channel.send(f'Burn transaction detected!\n'
+                                       f'Block number: {latest_block}\n'
+                                       f'Block hash: {block_hash}\n'
+                                       f'Transaction ID: {burn_txid_this_block}\n'
+                                       f'Burned coins in this block: {total_burned_coins_this_block}\n'
+                                       f'Total burned coins: {global_total_burned_coins}')
+
+            # update last processed block
+            last_processed_block = latest_block
+
+        # Debug 
         except Exception as e:
             print(f'Response status: {response.status}')
             print(f'Response text: {await response.text()}')
             print(f'Error: {e}')
+
+async def calculate_total_burned_coins():
+    global global_total_burned_coins, last_processed_block
+
+    async with aiohttp.ClientSession(auth=auth) as session:
+        # fetch the latest block
+        async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
+            response_json = await response.json()
+            latest_block = response_json['result']['blocks']
+
+        # we will start from block 0 and iterate up to the latest block
+        for current_block in range(latest_block + 1):
+            print(f'Checking block {current_block}')  # Debug line
+
+            async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [current_block]}) as response:
+                response_json = await response.json()
+                block_hash = response_json['result']
+                print(f'Block hash: {block_hash}')  # Debug line
+
+            async with session.post('http://localhost:14531', json={'method': 'getblock', 'params': [block_hash]}) as response:
+                response_json = await response.json()
+                block = response_json['result']
+
+            # iterate through each transaction in the block
+            for txid in block['tx']:
+                async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
+                    response_json = await response.json()
+                    tx = response_json['result']
+                # check each output script for the OP_RETURN opcode
+                for vout in tx['vout']:
+                    if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
+                        # add the value of this output to the total burned coins
+                        global_total_burned_coins += vout['value']
+
+            # print out the sync progress and total burned coins so far
+            print(f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}')
+
+        last_processed_block = latest_block
 
 # replace with your actual bot token
 bot.run('your-bot-token')
