@@ -62,9 +62,13 @@ async def burn_check():
             for txid in block['tx']:
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
                     response_json = await response.json()
+                    print(f'Response JSON for raw transaction: {response_json}')  # Debug line
                     tx = response_json['result']
+                if tx is None:
+                    print(f'Failed to get raw transaction {txid}.')
+                continue  # Skip this transaction and move to the next one
                 # check each output script for the OP_RETURN opcode
-                for vout in tx['vout']:
+            for vout in tx['vout']:
                     if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
                         # add the value of this output to the total burned coins
                         total_burned_coins_this_block += vout['value']
@@ -122,8 +126,11 @@ async def calculate_total_burned_coins():
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
                     response_json = await response.json()
                     tx = response_json['result']
+                if tx is None:
+                    print(f'Failed to get raw transaction {txid}')
+            continue  # skip this transaction and move to the next one
                 # check each output script for the OP_RETURN opcode
-                for vout in tx['vout']:
+            for vout in tx['vout']:
                     if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
                         # add the value of this output to the total burned coins
                         global_total_burned_coins += vout['value']
