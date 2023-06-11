@@ -1,3 +1,4 @@
+import sqlite3
 from discord.ext import commands, tasks
 import discord
 import aiohttp
@@ -19,7 +20,47 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # initialize total burned coins
 global_total_burned_coins = 0
 # initialize last processed block
-last_processed_block = -1
+last_processed_block = -1 # set to desired start block
+
+def get_last_processed_block_from_db():
+    conn = sqlite3.connect('burnbot.db')
+    c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS burnbot (last_processed_block INT, total_burned_coins REAL)")
+    c.execute("SELECT last_processed_block FROM burnbot")
+    result = c.fetchone()
+    conn.close()
+    if result is None:
+        return -1
+    return result[0]
+
+def get_total_burned_coins_from_db():
+    conn = sqlite3.connect('burnbot.db')
+    c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS burnbot (last_processed_block INT, total_burned_coins REAL)")
+    c.execute("SELECT total_burned_coins FROM burnbot")
+    result = c.fetchone()
+    conn.close()
+    if result is None:
+        return 0.0
+    return result[0]
+
+def update_last_processed_block_in_db(block_num):
+    conn = sqlite3.connect('burnbot.db')
+    c = conn.cursor()
+    c.execute("UPDATE burnbot SET last_processed_block = ?", (block_num,))
+    conn.commit()
+    conn.close()
+
+def update_total_burned_coins_in_db(total_burned):
+    conn = sqlite3.connect('burnbot.db')
+    c = conn.cursor()
+    c.execute("UPDATE burnbot SET total_burned_coins = ?", (total_burned,))
+    conn.commit()
+    conn.close()
+
+# read last processed block and total burned coins from DB
+last_processed_block = get_last_processed_block_from_db()
+global_total_burned_coins = get_total_burned_coins_from_db()
 
 @bot.event
 async def on_ready():
@@ -76,6 +117,7 @@ async def burn_check():
 
             if total_burned_coins_this_block > 0:
                 global_total_burned_coins += total_burned_coins_this_block
+                update_total_burned_coins_in_db(global_total_burned_coins)
                 print(f'Detected burn transaction {burn_txid_this_block} in block {latest_block} with {total_burned_coins_this_block} burned coins')  # Debug line
                 # send a message if there were any burned coins in this transaction
                 channel = bot.get_channel(CHANNEL_ID) # change with desired CHANNEL_ID
@@ -92,6 +134,7 @@ async def burn_check():
 
             # update last processed block
             last_processed_block = latest_block
+            update_last_processed_block_in_db(last_processed_block)
 
         # Debug 
         except Exception as e:
@@ -109,7 +152,7 @@ async def calculate_total_burned_coins():
             latest_block = response_json['result']['blocks']
 
         # we will start from block 0 and iterate up to the latest block
-        for current_block in range(latest_block + 1):
+        for current_block in range(last_processed_block + 1, latest_block + 1):
             print(f'Checking block {current_block}')  # Debug line
 
             async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [current_block]}) as response:
@@ -134,11 +177,14 @@ async def calculate_total_burned_coins():
                 if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
                      # add the value of this output to the total burned coins
                     global_total_burned_coins += vout['value']
+                    update_total_burned_coins_in_db(global_total_burned_coins)
+
                     # print out the sync progress and total burned coins so far
                     print(f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}') # Debug line
         
         # update last processed block
         last_processed_block = latest_block
+        update_last_processed_block_in_db(last_processed_block)
 
 # replace with your actual bot token
 bot.run('your-bot-token')
