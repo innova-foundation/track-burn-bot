@@ -5,7 +5,8 @@ The `track-burn-bot` is a Python-based Discord bot designed to monitor and repor
 ## Prerequisites
 
 1. Python 3.6 or later: You can verify your Python version by running `python --version` in your command prompt.
-2. Python packages:
+2. SQLite3: This is included in the Python standard library for Python versions 2.5 and later.
+3. Python packages:
    * discord.py
    * aiohttp
 
@@ -16,6 +17,10 @@ pip install -r requirements.txt
 ```
 
 ## Configuration
+
+### SQLite Database
+
+The bot requires a SQLite database to persist the state of the last processed block and the total burned coins. The database file is called `burnbot.db` and it is created automatically when the bot starts if it does not already exist. It contains a single table, `burnbot`, with the fields `last_processed_block` (integer) and `total_burned_coins` (real).
 
 ### RPC Configuration
 
@@ -36,7 +41,7 @@ bot.run('your-bot-token')  # Replace with your Discord bot token
 
 ### Update Interval
 
-The bot checks for burn transactions at a set interval. This can be adjusted on line 11 of `burnbot.py`:
+The bot checks for burn transactions at a set interval. This can be adjusted on line 61 of `burnbot.py`:
 
 ```python
 @tasks.loop(seconds=15)  # Adjust the interval as desired
@@ -78,6 +83,6 @@ The bot will attempt to connect to Discord. Upon successful connection, it will 
 
 ## Usage
 
-Once your blockchain is synced, start the bot. It will automatically begin checking for burn transactions from block 0, once it reaches the most recent block it will start an automated check based on the interval you specified. When it detects a burn transaction, it will send a message to the designated Discord channel with the block number, block hash, transaction ID, number of burned coins in the transaction, and the total number of burned coins in the chain so far.
+Once your blockchain is synced, start the bot. It will automatically begin checking for burn transactions from the last processed block, if it's the first run, it will start from block 0. Once it reaches the most recent block it will start an automated check based on the interval you specified. When it detects a burn transaction, it will send a message to the designated Discord channel with the block number, block hash, transaction ID, number of burned coins in the transaction, and the total number of burned coins in the chain so far.
 
 If you encounter any issues, check the terminal for any error messages or debugging information.
