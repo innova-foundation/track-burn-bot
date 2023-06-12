@@ -43,22 +43,19 @@ def get_total_burned_coins_from_db():
         return 0.0
     return result[0]
 
-def update_last_processed_block_in_db(c, block_num):
-    c.execute("SELECT count(*) FROM burnbot")
-    result = c.fetchone()
-    if result[0] == 0:
-        c.execute("INSERT INTO burnbot (last_processed_block, total_burned_coins) VALUES (?, 0)", (block_num,))
-    else:
-        c.execute("UPDATE burnbot SET last_processed_block = ?", (block_num,))
+def update_last_processed_block_in_db(block_num):
+    conn = sqlite3.connect('burnbot.db')
+    c = conn.cursor()
+    c.execute("UPDATE burnbot SET last_processed_block = ?", (block_num,))
+    conn.commit()
+    conn.close()
 
-def update_total_burned_coins_in_db(c, total_burned):
-    c.execute("SELECT count(*) FROM burnbot")
-    result = c.fetchone()
-    if result[0] == 0:
-        c.execute("INSERT INTO burnbot (last_processed_block, total_burned_coins) VALUES (-1, ?)", (total_burned,))
-    else:
-        c.execute("UPDATE burnbot SET total_burned_coins = ?", (total_burned,))
-
+def update_total_burned_coins_in_db(total_burned):
+    conn = sqlite3.connect('burnbot.db')
+    c = conn.cursor()
+    c.execute("UPDATE burnbot SET total_burned_coins = ?", (total_burned,))
+    conn.commit()
+    conn.close()
 
 # read last processed block and total burned coins from DB
 last_processed_block = get_last_processed_block_from_db()
