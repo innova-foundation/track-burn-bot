@@ -1,3 +1,4 @@
+from innovarpc.authproxy import AuthServiceProxy
 import sqlite3
 from discord.ext import commands, tasks
 import discord
@@ -162,46 +163,39 @@ async def calculate_total_burned_coins():
     conn = sqlite3.connect('burnbot.db')
     c = conn.cursor()
 
-    async with aiohttp.ClientSession(auth=auth) as session:
-        try:
-            async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
-                response_json = await response.json()
-                latest_block = response_json['result']['blocks']
+    # Create the RPC connection
+    rpc_connection = AuthServiceProxy(f"http://{rpc_user}:{rpc_password}@127.0.0.1:8332")
 
-            # start from the last processed block
-            for i in range(last_processed_block + 1, latest_block + 1):
-                # calculate total burned coins
-                async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [i]}) as response:
-                    response_json = await response.json()
-                    block_hash = response_json['result']
+    try:
+        latest_block = rpc_connection.getinfo()['blocks']
 
-                total_burned_coins_this_block = 0
-                async with session.post('http://localhost:14531', json={'method': 'getblock', 'params': [block_hash]}) as response:
-                    response_json = await response.json()
-                    block = response_json['result']
+        # Start from the last processed block
+        block_hashes_commands = [["getblockhash", i] for i in range(last_processed_block + 1, latest_block + 1)]
+        block_hashes = rpc_connection.batch_(block_hashes_commands)
 
-                for txid in block['tx']:
-                    async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
-                        response_json = await response.json()
-                        tx = response_json['result']
-                        if tx is None:
-                            continue
+        block_commands = [["getblock", h] for h in block_hashes]
+        blocks = rpc_connection.batch_(block_commands)
 
-                    for vout in tx['vout']:
-                        if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
-                            total_burned_coins_this_block += vout['value']
+        for block in blocks:
+            total_burned_coins_this_block = 0
+            for txid in block['tx']:
+                tx = rpc_connection.getrawtransaction(txid, 1)
+                if tx is None:
+                    continue
 
-                global_total_burned_coins += total_burned_coins_this_block
+                for vout in tx['vout']:
+                    if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
+                        total_burned_coins_this_block += vout['value']
 
-            update_total_burned_coins_in_db(c, global_total_burned_coins)
-            conn.commit()
+            global_total_burned_coins += total_burned_coins_this_block
 
-        except Exception as e:
-            print(f'Response status: {response.status}')
-            print(f'Response text: {await response.text()}')
-            print(f'Error: {e}')
+        update_total_burned_coins_in_db(c, global_total_burned_coins)
+        conn.commit()
 
-    # close the database connection here
+    except Exception as e:
+        print(f'Error: {e}')
+
+    # Close the database connection here
     conn.close()
 
 # replace with your actual bot token
