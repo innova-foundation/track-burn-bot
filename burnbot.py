@@ -80,78 +80,71 @@ async def burn_check():
     conn = sqlite3.connect('burnbot.db')
     c = conn.cursor()
 
-    async with aiohttp.ClientSession(auth=auth) as session:
-        try:
-            # fetch the latest block
-            async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
-                response_json = await response.json()
-                latest_block = response_json['result']['blocks']
+    # Create the RPC connection
+    rpc_connection = AuthServiceProxy(f"http://{rpc_user}:{rpc_password}@127.0.0.1:14531")
 
-            # check if the latest block is the same as the last processed block
-            if latest_block == last_processed_block:
-                # if it is, no need to process it again
-                return
+    try:
+        # fetch the latest block
+        latest_block = rpc_connection.getinfo()['blocks']
 
-            print(f'Checking block {latest_block}')  # Debug line
+        # check if the latest block is the same as the last processed block
+        if latest_block == last_processed_block:
+            # if it is, no need to process it again
+            return
 
-            async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [latest_block]}) as response:
-                response_json = await response.json()
-                block_hash = response_json['result']
-                print(f'Block hash: {block_hash}')  # Debug line
+        print(f'Checking block {latest_block}')  # Debug line
 
-            # Burned coins in the current block
-            total_burned_coins_this_block = 0
-            burn_txid_this_block = None
+        block_hash = rpc_connection.getblockhash(latest_block)
+        print(f'Block hash: {block_hash}')  # Debug line
 
-            async with session.post('http://localhost:14531', json={'method': 'getblock', 'params': [block_hash]}) as response:
-                response_json = await response.json()
-                block = response_json['result']
+        # Burned coins in the current block
+        total_burned_coins_this_block = 0
+        burn_txid_this_block = None
 
-            # iterate through each transaction in the block
-            for txid in block['tx']:
-                async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
-                    response_json = await response.json()
-                    print(f'Response JSON for raw transaction: {response_json}')  # Debug line
-                    tx = response_json['result']
-                    if tx is None:
-                        print(f'Failed to get raw transaction {txid}.') # Debug line
-                        continue  # Skip this transaction and move to the next one
+        block = rpc_connection.getblock(block_hash)
 
-                # check each output script for the OP_RETURN opcode
-                for vout in tx['vout']:
-                    if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
-                        # add the value of this output to the total burned coins
-                        total_burned_coins_this_block += vout['value']
-                        burn_txid_this_block = txid
+        # batch getrawtransaction calls for all transactions in the block
+        tx_commands = [["getrawtransaction", txid, 1] for txid in block['tx']]
+        transactions = rpc_connection.batch_(tx_commands)
 
-            if total_burned_coins_this_block > 0:
-                global_total_burned_coins += total_burned_coins_this_block
-                update_total_burned_coins_in_db(c, global_total_burned_coins) # pass the cursor to the update function
-                conn.commit()
-                print(f'Detected burn transaction {burn_txid_this_block} in block {latest_block} with {total_burned_coins_this_block} burned coins')  # Debug line
-                # send a message if there were any burned coins in this transaction
-                channel = bot.get_channel(CHANNEL_ID) # change with desired CHANNEL_ID
-                if channel is None:
-                    print('No channel found with specified ID')  # Debug line
-                else:
-                    print(f'Sending message to channel {channel.id}')  # Debug line
-                    await channel.send(f'Burn transaction detected!\n'
-                                       f'Block number: {latest_block}\n'
-                                       f'Block hash: {block_hash}\n'
-                                       f'Transaction ID: {burn_txid_this_block}\n'
-                                       f'Burned coins in this block: {total_burned_coins_this_block}\n'
-                                       f'Total burned coins: {global_total_burned_coins}')
+        # iterate through each transaction in the block
+        for tx in transactions:
+            if tx is None:
+                continue  # Skip this transaction and move to the next one
 
-            # update last processed block
-            last_processed_block = latest_block
-            update_last_processed_block_in_db(c, last_processed_block) # pass the cursor to the update function
+            # check each output script for the OP_RETURN opcode
+            for vout in tx['vout']:
+                if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
+                    # add the value of this output to the total burned coins
+                    total_burned_coins_this_block += vout['value']
+                    burn_txid_this_block = txid
+
+        if total_burned_coins_this_block > 0:
+            global_total_burned_coins += total_burned_coins_this_block
+            update_total_burned_coins_in_db(c, global_total_burned_coins) # pass the cursor to the update function
             conn.commit()
+            print(f'Detected burn transaction {burn_txid_this_block} in block {latest_block} with {total_burned_coins_this_block} burned coins')  # Debug line
+            # send a message if there were any burned coins in this transaction
+            channel = bot.get_channel(CHANNEL_ID) # change with desired CHANNEL_ID
+            if channel is None:
+                print('No channel found with specified ID')  # Debug line
+            else:
+                print(f'Sending message to channel {channel.id}')  # Debug line
+                await channel.send(f'Burn transaction detected!\n'
+                                   f'Block number: {latest_block}\n'
+                                   f'Block hash: {block_hash}\n'
+                                   f'Transaction ID: {burn_txid_this_block}\n'
+                                   f'Burned coins in this block: {total_burned_coins_this_block}\n'
+                                   f'Total burned coins: {global_total_burned_coins}')
 
-        # Debug 
-        except Exception as e:
-            print(f'Response status: {response.status}')
-            print(f'Response text: {await response.text()}')
-            print(f'Error: {e}')
+        # update last processed block
+        last_processed_block = latest_block
+        update_last_processed_block_in_db(c, last_processed_block) # pass the cursor to the update function
+        conn.commit()
+
+    # Debug 
+    except Exception as e:
+        print(f'Error: {e}')
 
     # close the database connection here
     conn.close()
@@ -164,7 +157,7 @@ async def calculate_total_burned_coins():
     c = conn.cursor()
 
     # Create the RPC connection
-    rpc_connection = AuthServiceProxy(f"http://{rpc_user}:{rpc_password}@127.0.0.1:8332")
+    rpc_connection = AuthServiceProxy(f"http://{rpc_user}:{rpc_password}@127.0.0.1:14531")
 
     try:
         latest_block = rpc_connection.getinfo()['blocks']
