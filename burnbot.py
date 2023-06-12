@@ -78,14 +78,14 @@ async def burn_check():
             async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
                 response_json = await response.json()
                 latest_block = response_json['result']['blocks']
-            
+
             # check if the latest block is the same as the last processed block
             if latest_block == last_processed_block:
                 # if it is, no need to process it again
                 return
 
             print(f'Checking block {latest_block}')  # Debug line
-            
+
             async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [latest_block]}) as response:
                 response_json = await response.json()
                 block_hash = response_json['result']
@@ -105,11 +105,12 @@ async def burn_check():
                     response_json = await response.json()
                     print(f'Response JSON for raw transaction: {response_json}')  # Debug line
                     tx = response_json['result']
-                if tx is None:
-                    print(f'Failed to get raw transaction {txid}.') # Debug line
-                continue  # Skip this transaction and move to the next one
+                    if tx is None:
+                        print(f'Failed to get raw transaction {txid}.') # Debug line
+                        continue  # Skip this transaction and move to the next one
+
                 # check each output script for the OP_RETURN opcode
-            for vout in tx['vout']:
+                for vout in tx['vout']:
                     if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
                         # add the value of this output to the total burned coins
                         total_burned_coins_this_block += vout['value']
@@ -151,7 +152,7 @@ async def calculate_total_burned_coins():
             response_json = await response.json()
             latest_block = response_json['result']['blocks']
 
-        # we will start from block 0 and iterate up to the latest block
+        # we will start from the last processed block + 1 and iterate up to the latest block
         for current_block in range(last_processed_block + 1, latest_block + 1):
             print(f'Checking block {current_block}')  # Debug line
 
@@ -159,8 +160,6 @@ async def calculate_total_burned_coins():
                 response_json = await response.json()
                 block_hash = response_json['result']
                 print(f'Block hash: {block_hash}')  # Debug line
-                last_processed_block = latest_block
-                update_last_processed_block_in_db(last_processed_block)
 
             async with session.post('http://localhost:14531', json={'method': 'getblock', 'params': [block_hash]}) as response:
                 response_json = await response.json()
@@ -171,22 +170,23 @@ async def calculate_total_burned_coins():
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
                     response_json = await response.json()
                     tx = response_json['result']
-                if tx is None:
-                    print(f'Failed to get raw transaction {txid}') # Debug line
-            continue  # skip this transaction and move to the next one
-                # check each output script for the OP_RETURN opcode
-        for vout in tx['vout']:
-                if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
-                     # add the value of this output to the total burned coins
-                    global_total_burned_coins += vout['value']
-                    update_total_burned_coins_in_db(global_total_burned_coins)
+                    if tx is None:
+                        print(f'Failed to get raw transaction {txid}') # Debug line
+                        continue  # skip this transaction and move to the next one
 
-                    # print out the sync progress and total burned coins so far
-                    print(f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}') # Debug line
-        
-        # update last processed block
-        last_processed_block = latest_block
-        update_last_processed_block_in_db(last_processed_block)
+                # check each output script for the OP_RETURN opcode
+                for vout in tx['vout']:
+                    if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
+                        # add the value of this output to the total burned coins
+                        global_total_burned_coins += vout['value']
+                        update_total_burned_coins_in_db(global_total_burned_coins)
+
+                        # print out the sync progress and total burned coins so far
+                        print(f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}') # Debug line
+
+            # update last processed block
+            last_processed_block = current_block
+            update_last_processed_block_in_db(last_processed_block)
 
 # replace with your actual bot token
 bot.run('your-bot-token')
