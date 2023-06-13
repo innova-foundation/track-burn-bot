@@ -52,16 +52,14 @@ def get_total_burned_coins_from_db():
 def update_last_processed_block_in_db(block_num):
     conn = sqlite3.connect('burnbot.db')
     c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO burnbot(last_processed_block, total_burned_coins) VALUES (?, ?)", 
-              (block_num, global_total_burned_coins))
+    c.execute("UPDATE burnbot SET last_processed_block = ?", (block_num,))
     conn.commit()
     conn.close()
 
 def update_total_burned_coins_in_db(total_burned):
     conn = sqlite3.connect('burnbot.db')
     c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO burnbot(last_processed_block, total_burned_coins) VALUES (?, ?)", 
-              (last_processed_block, total_burned))
+    c.execute("UPDATE burnbot SET total_burned_coins = ?", (total_burned,))
     conn.commit()
     conn.close()
 
@@ -135,7 +133,7 @@ async def burn_check():
                     logger.info('Detected burn transaction %s in block %s with %s burned coins', burn_txid_this_block, latest_block, total_burned_coins_this_block) # Logger
                     # send a message if there were any burned coins in this transaction
                     channel_1 = bot.get_channel(CHANNEL_ID_1) # replace with your first CHANNEL_ID
-                    channel_2 = bot.get_channel(CHANNEL_ID_2) # replace with your second CHANNEL_ID (For telegram-bridge)
+                    channel_2 = bot.get_channel(CHANNEL_ID_2) # replace with your second CHANNEL_ID (For telegram-bridge) Comment this line out if you want only one channel
 
                     if channel_1 is None:
                         print('No channel found with specified ID for channel 1')  # Debug line
@@ -151,7 +149,7 @@ async def burn_check():
                         embed.add_field(name="Total burned coins", value=global_total_burned_coins, inline=False)
                         await channel_1.send(embed=embed)
         
-                    if channel_2 is None:
+                    if channel_2 is None: # Comment out starting here if you want only one channel
                         print('No channel found with specified ID for channel 2')  # Debug line
                         logger.info('No channel found with specified ID for channel 2') # Logger
                     else:
@@ -162,7 +160,7 @@ async def burn_check():
                                         f'Block hash: {block_hash}\n'
                                         f'Transaction ID: {burn_txid_this_block}\n'
                                         f'Burned coins in this block: {total_burned_coins_this_block}\n'
-                                        f'Total burned coins: {global_total_burned_coins}')
+                                        f'Total burned coins: {global_total_burned_coins}') # Comment out ending here if you want only one channel
 
             # update last processed block
             last_processed_block = latest_block
