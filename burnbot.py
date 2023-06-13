@@ -23,7 +23,7 @@ logging.basicConfig(filename='bot.log', level=logging.INFO)
 logger = logging.getLogger()
 
 # initialize total burned coins
-global_total_burned_coins = 0
+global_total_burned_coins = 0 # do not change from 0, allow sync from block 0 (or burn start block) to track all burned coins
 # initialize last processed block
 last_processed_block = -1 # set to desired start block
 
@@ -93,13 +93,13 @@ async def burn_check():
                 return
 
             print(f'Checking block {latest_block}')  # Debug line
-            logger.info(f'Checking block {latest_block}') # Logger
+            logger.info('Checking block %s', latest_block) # Logger
 
             async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [latest_block]}) as response:
                 response_json = await response.json()
                 block_hash = response_json['result']
                 print(f'Block hash: {block_hash}')  # Debug line
-                logger.info(f'Block hash: {block_hash}') # Logger
+                logger.info('Block hash: %s', block_hash) # Logger
 
             # Burned coins in the current block
             total_burned_coins_this_block = 0
@@ -114,11 +114,11 @@ async def burn_check():
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
                     response_json = await response.json()
                     print(f'Response JSON for raw transaction: {response_json}')  # Debug line
-                    logger.info(f'Response JSON for raw transaction: {response_json}') # Logger
+                    logger.info('Response JSON for raw transaction: %s', response_json) # Logger
                     tx = response_json['result']
                     if tx is None:
                         print(f'Failed to get raw transaction {txid}.') # Debug line
-                        logger.info(f'Failed to get raw transaction {txid}.') # Logger
+                        logger.info('Failed to get raw transaction %s.', txid) # Logger                        
                         continue  # Skip this transaction and move to the next one
 
                 # check each output script for the OP_RETURN opcode
@@ -132,7 +132,7 @@ async def burn_check():
                 global_total_burned_coins += total_burned_coins_this_block
                 update_total_burned_coins_in_db(global_total_burned_coins)
                 print(f'Detected burn transaction {burn_txid_this_block} in block {latest_block} with {total_burned_coins_this_block} burned coins')  # Debug line
-                logger.info(f'Detected burn transaction {burn_txid_this_block} in block {latest_block} with {total_burned_coins_this_block} burned coins') # Logger
+                logger.info('Detected burn transaction %s in block %s with %s burned coins', burn_txid_this_block, latest_block, total_burned_coins_this_block) # Logger
                 # send a message if there were any burned coins in this transaction
                 channel = bot.get_channel(CHANNEL_ID) # change with desired CHANNEL_ID
                 if channel is None:
@@ -140,7 +140,7 @@ async def burn_check():
                     logger.info('No channel found with specified ID') # Logger
                 else:
                     print(f'Sending message to channel {channel.id}')  # Debug line
-                    logger.info(f'Sending message to channel {channel.id}')
+                    logger.info('Sending message to channel %s', channel.id)
                     embed=discord.Embed(title="Burn transaction detected!", color=0xff0000)
                     embed.add_field(name="Block number", value=latest_block, inline=False)
                     embed.add_field(name="Block hash", value=block_hash, inline=False)
@@ -155,9 +155,9 @@ async def burn_check():
 
         # Debug 
         except Exception as e:
-            logger.error(f'Response status: {response.status}')
-            logger.error(f'Response text: {await response.text()}')
-            logger.exception(f'Error: {e}')
+            logger.error('Response status: %s', response.status)
+            logger.error('Response text: %s', await response.text())
+            logger.exception('Error: %s', e)
 
 async def calculate_total_burned_coins():
     global global_total_burned_coins, last_processed_block
@@ -171,13 +171,13 @@ async def calculate_total_burned_coins():
         # we will start from the last processed block + 1 and iterate up to the latest block
         for current_block in range(last_processed_block + 1, latest_block + 1):
             print(f'Checking block {current_block}')  # Debug line
-            logger.info(f'Checking block {latest_block}') # Logger
+            logger.info('Checking block %s', latest_block) # Logger
 
             async with session.post('http://localhost:14531', json={'method': 'getblockhash', 'params': [current_block]}) as response:
                 response_json = await response.json()
                 block_hash = response_json['result']
                 print(f'Block hash: {block_hash}')  # Debug line
-                logger.info(f'Block hash: {block_hash}') # Logger
+                logger.info('Block hash: %s', block_hash) # Logger
 
             async with session.post('http://localhost:14531', json={'method': 'getblock', 'params': [block_hash]}) as response:
                 response_json = await response.json()
@@ -188,11 +188,11 @@ async def calculate_total_burned_coins():
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
                     response_json = await response.json()
                     print(f'Response JSON for raw transaction: {response_json}')  # Debug line
-                    logger.info(f'Response JSON for raw transaction: {response_json}') # Logger
+                    logger.info('Response JSON for raw transaction: %s', response_json) # Logger
                     tx = response_json['result']
                     if tx is None:
                         print(f'Failed to get raw transaction {txid}') # Debug line
-                        logger.info(f'Failed to get raw transaction {txid}.') # Logger
+                        logger.info('Failed to get raw transaction %s.', txid) # Logger
                         continue  # skip this transaction and move to the next one
 
                 # check each output script for the OP_RETURN opcode
@@ -204,7 +204,7 @@ async def calculate_total_burned_coins():
 
                         # print out the sync progress and total burned coins so far
                         print(f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}') # Debug line
-                        logger.info(f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}') # Logger
+                        logger.info('Sync progress: Block %s/%s checked. Total burned coins so far: %s', current_block, latest_block, global_total_burned_coins) # Logger
 
             # update last processed block
             last_processed_block = current_block
