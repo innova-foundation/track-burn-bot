@@ -66,7 +66,7 @@ global_total_burned_coins = get_total_burned_coins_from_db()
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord Server!') # Debug line
-    logger.info('%s has connected to Discord Server!', bot.user) # Logger
+    #logger.info('%s has connected to Discord Server!', bot.user) # Logger
     await calculate_total_burned_coins()
     burn_check.start()
 
