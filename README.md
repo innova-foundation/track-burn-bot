@@ -85,4 +85,6 @@ The bot will attempt to connect to Discord. Upon successful connection, it will 
 
 Once your blockchain is synced, start the bot. It will automatically begin checking for burn transactions from the last processed block, if it's the first run, it will start from block 0. Once it reaches the most recent block it will start an automated check based on the interval you specified. When it detects a burn transaction, it will send a message to the designated Discord channel with the block number, block hash, transaction ID, number of burned coins in the transaction, and the total number of burned coins in the chain so far.
 
+If you want to use logging, checkout the logger branch. This is much slower but will produce a bot.log file saving the output for later inspection. The python-rpc branch contains integrations to the innova-pythonrpc library, which is still in testing and does not work.
+
 If you encounter any issues, check the terminal for any error messages or debugging information.
