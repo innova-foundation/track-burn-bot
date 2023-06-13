@@ -128,26 +128,41 @@ async def burn_check():
                         total_burned_coins_this_block += vout['value']
                         burn_txid_this_block = txid
 
-            if total_burned_coins_this_block > 0:
-                global_total_burned_coins += total_burned_coins_this_block
-                update_total_burned_coins_in_db(global_total_burned_coins)
-                print(f'Detected burn transaction {burn_txid_this_block} in block {latest_block} with {total_burned_coins_this_block} burned coins')  # Debug line
-                logger.info('Detected burn transaction %s in block %s with %s burned coins', burn_txid_this_block, latest_block, total_burned_coins_this_block) # Logger
-                # send a message if there were any burned coins in this transaction
-                channel = bot.get_channel(CHANNEL_ID) # change with desired CHANNEL_ID
-                if channel is None:
-                    print('No channel found with specified ID')  # Debug line
-                    logger.info('No channel found with specified ID') # Logger
-                else:
-                    print(f'Sending message to channel {channel.id}')  # Debug line
-                    logger.info('Sending message to channel %s', channel.id)
-                    embed=discord.Embed(title="Burn transaction detected!", color=0xff0000)
-                    embed.add_field(name="Block number", value=latest_block, inline=False)
-                    embed.add_field(name="Block hash", value=block_hash, inline=False)
-                    embed.add_field(name="Transaction ID", value=burn_txid_this_block, inline=False)
-                    embed.add_field(name="Burned coins in this block", value=total_burned_coins_this_block, inline=False)
-                    embed.add_field(name="Total burned coins", value=global_total_burned_coins, inline=False)
-                    await channel.send(embed=embed)
+                if total_burned_coins_this_block > 0:
+                    global_total_burned_coins += total_burned_coins_this_block
+                    update_total_burned_coins_in_db(global_total_burned_coins)
+                    print(f'Detected burn transaction {burn_txid_this_block} in block {latest_block} with {total_burned_coins_this_block} burned coins')  # Debug line
+                    logger.info('Detected burn transaction %s in block %s with %s burned coins', burn_txid_this_block, latest_block, total_burned_coins_this_block) # Logger
+                    # send a message if there were any burned coins in this transaction
+                    channel_1 = bot.get_channel(CHANNEL_ID_1) # replace with your first CHANNEL_ID
+                    channel_2 = bot.get_channel(CHANNEL_ID_2) # replace with your second CHANNEL_ID (For telegram-bridge)
+
+                    if channel_1 is None:
+                        print('No channel found with specified ID for channel 1')  # Debug line
+                        logger.info('No channel found with specified ID for channel 1') # Logger
+                    else:
+                        print(f'Sending message to channel {channel_1.id}')  # Debug line
+                        logger.info('Sending message to channel %s', channel_1.id)
+                        embed=discord.Embed(title="Burn transaction detected!", color=0xff0000)
+                        embed.add_field(name="Block number", value=latest_block, inline=False)
+                        embed.add_field(name="Block hash", value=block_hash, inline=False)
+                        embed.add_field(name="Transaction ID", value=burn_txid_this_block, inline=False)
+                        embed.add_field(name="Burned coins in this block", value=total_burned_coins_this_block, inline=False)
+                        embed.add_field(name="Total burned coins", value=global_total_burned_coins, inline=False)
+                        await channel_1.send(embed=embed)
+        
+                    if channel_2 is None:
+                        print('No channel found with specified ID for channel 2')  # Debug line
+                        logger.info('No channel found with specified ID for channel 2') # Logger
+                    else:
+                        print(f'Sending message to channel {channel_2.id}')  # Debug line
+                        logger.info('Sending message to channel %s', channel_2.id)
+                        await channel_2.send(f'Burn transaction detected!\n'
+                                        f'Block number: {latest_block}\n'
+                                        f'Block hash: {block_hash}\n'
+                                        f'Transaction ID: {burn_txid_this_block}\n'
+                                        f'Burned coins in this block: {total_burned_coins_this_block}\n'
+                                        f'Total burned coins: {global_total_burned_coins}')
 
             # update last processed block
             last_processed_block = latest_block
