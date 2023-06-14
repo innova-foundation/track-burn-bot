@@ -75,7 +75,7 @@ async def burn_check():
     global global_total_burned_coins, last_processed_block
 
     # Initialize current_block
-    current_block = last_processed_block + 1
+    current_block = last_processed_block
 
     async with aiohttp.ClientSession(auth=auth) as session:
         try:
@@ -169,7 +169,7 @@ async def calculate_total_burned_coins():
     global global_total_burned_coins, last_processed_block
 
     # Initialize current_block
-    current_block = last_processed_block + 1
+    current_block = last_processed_block
 
     async with aiohttp.ClientSession(auth=auth) as session:
         # fetch the latest block
