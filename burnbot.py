@@ -131,7 +131,7 @@ async def burn_check():
                         # Step 1: Catch exceptions during message preparation and sending
                         try:
                             # Step 2: Validate the embed format. Convert the values to string before passing to the add_field method.
-                            embed=discord.Embed(title="Burn transaction detected!", color=0xff0000)
+                            embed=discord.Embed(title="Burn transaction detected!", color=0x01619c)
                             embed.add_field(name="Block number", value=str(latest_block), inline=False)
                             embed.add_field(name="Block hash", value=str(block_hash), inline=False)
                             embed.add_field(name="Transaction ID", value=str(burn_txid_this_block), inline=False)
