@@ -125,6 +125,8 @@ async def burn_check():
                             # Add the value of this output to the total burned coins
                             total_burned_coins_this_block += vout['value']  # Was: total_op_return_value
 
+                            burn_txid_this_block = txid
+
                 if total_burned_coins_this_block > 0:
                     global_total_burned_coins += total_burned_coins_this_block
                     update_total_burned_coins_in_db(global_total_burned_coins)
