@@ -125,14 +125,6 @@ async def burn_check():
                             # Add the value of this output to the total burned coins
                             total_burned_coins_this_block += vout['value']  # Was: total_op_return_value
 
-                # Now you can send the OP_RETURN message in your bot's reply
-                channel = bot.get_channel(CHANNEL_ID)  # Replace with your desired channel ID
-                if channel is not None:
-                    try:
-                        await channel.send(f"The OP_RETURN message from the transaction is: {op_return_message}")
-                    except Exception as e:
-                        print(f'Exception occurred while sending the message: {e}')  # Debug line
-
                 if total_burned_coins_this_block > 0:
                     global_total_burned_coins += total_burned_coins_this_block
                     update_total_burned_coins_in_db(global_total_burned_coins)
@@ -150,14 +142,13 @@ async def burn_check():
                         # Step 1: Catch exceptions during message preparation and sending
                         try:
                             # Step 2: Validate the embed format. Convert the values to string before passing to the add_field method.
-                            embed = discord.Embed(title="Burn transaction detected!", color=0x01619c)
+                            embed=discord.Embed(title="Burn transaction detected!", color=0x01619c)
                             embed.add_field(name="Block number", value=str(latest_block), inline=False)
                             embed.add_field(name="Block hash", value=str(block_hash), inline=False)
                             embed.add_field(name="Transaction ID", value=str(burn_txid_this_block), inline=False)
                             if op_return_message is not None:  # Check if an OP_RETURN message exists
                                 embed.add_field(name="Burn Message", value=(op_return_message), inline=False)
-                            embed.add_field(name="Burned coins in this block", value=str(total_burned_coins_this_block),
-                                            inline=False)
+                            embed.add_field(name="Burned coins in this block", value=str(total_burned_coins_this_block), inline=False)
                             embed.add_field(name="Total burned coins", value=str(global_total_burned_coins), inline=False)
                             await channel_1.send(embed=embed)
                         except Exception as e:
@@ -167,8 +158,7 @@ async def burn_check():
                         print('No channel found with specified ID for channel 2')  # Debug line
                     else:
                         print(f'Sending message to channel {channel_2.id}')  # Debug line
-                        await channel_2.send(
-                            f'Burn transaction detected!\n'
+                        await channel_2.send(f'Burn transaction detected!\n'
                             f'Block number: {latest_block}\n'
                             f'Block hash: {block_hash}\n'
                             f'Transaction ID: {burn_txid_this_block}\n'
@@ -193,12 +183,12 @@ async def calculate_total_burned_coins():
     current_block = last_processed_block
 
     async with aiohttp.ClientSession(auth=auth) as session:
-        # fetch the latest block
+        # Fetch the latest block
         async with session.post('http://localhost:14531', json={'method': 'getinfo'}) as response:
             response_json = await response.json()
             latest_block = response_json['result']['blocks']
 
-        # we will start from the last processed block + 1 and iterate up to the latest block
+        # We will start from the last processed block + 1 and iterate up to the latest block
         for current_block in range(last_processed_block + 1, latest_block + 1):
             print(f'Checking block {current_block}')  # Debug line
 
@@ -211,32 +201,32 @@ async def calculate_total_burned_coins():
                 response_json = await response.json()
                 block = response_json['result']
 
-            # iterate through each transaction in the block
+            # Iterate through each transaction in the block
             for txid in block['tx']:
                 async with session.post('http://localhost:14531', json={'method': 'getrawtransaction', 'params': [txid, 1]}) as response:
                     response_json = await response.json()
-                    # print(f'Response JSON for raw transaction: {response_json}')  # Debug line
-                    # logger.info('Response JSON for raw transaction: %s', response_json) # Logger
+                    #print(f'Response JSON for raw transaction: {response_json}')  # Debug line
+                    #logger.info('Response JSON for raw transaction: %s', response_json) # Logger
                     tx = response_json['result']
                     if tx is None:
-                        # print(f'Failed to get raw transaction {txid}') # Debug line
-                        # logger.info('Failed to get raw transaction %s.', txid) # Logger
-                        continue  # skip this transaction and move to the next one
+                        #print(f'Failed to get raw transaction {txid}') # Debug line
+                        #logger.info('Failed to get raw transaction %s.', txid) # Logger
+                        continue  # Skip this transaction and move to the next one
 
-                # check each output script for the OP_RETURN opcode
+                # Check each output script for the OP_RETURN opcode
                 for vout in tx['vout']:
                     if vout['scriptPubKey']['asm'].startswith('OP_RETURN'):
-                        # add the value of this output to the total burned coins
+                        # Add the value of this output to the total burned coins
                         global_total_burned_coins += vout['value']
                         update_total_burned_coins_in_db(global_total_burned_coins)
 
-                        # print out the sync progress and total burned coins so far
+                        # Print out the sync progress and total burned coins so far
                         print(
                             f'Sync progress: Block {current_block}/{latest_block} checked. Total burned coins so far: {global_total_burned_coins}')  # Debug line
 
-            # update last processed block
+            # Update last processed block
             last_processed_block = current_block
             update_last_processed_block_in_db(last_processed_block)
 
-# replace with your actual bot token
+# Replace with your actual bot token
 bot.run('your-bot-token')
