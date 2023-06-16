@@ -139,8 +139,9 @@ async def burn_check():
 
                 # Iterate through the list of burn transactions and their op_return messages
                 for i in range(len(burn_txid_list)):
-                    burn_txids += "\nTransaction ID: " + burn_txid_list[i]
-                    op_return_message_content += "\nBurn Message: " + op_return_message_list[i]
+                    burn_txids += f"\n{i+1}: {burn_txid_list[i]}"
+                    op_return_message_content += f"\n{i+1}: {op_return_message_list[i]}"
+
 
                 if total_burned_coins_this_block > 0:
                     global_total_burned_coins += total_burned_coins_this_block
@@ -163,7 +164,7 @@ async def burn_check():
                             embed.add_field(name="Block number", value=str(latest_block), inline=False)
                             embed.add_field(name="Block hash", value=str(block_hash), inline=False)
                             embed.add_field(name="Transaction IDs", value=burn_txids, inline=False)
-                            if op_return_message is not None:  # Check if an OP_RETURN message exists
+                            if op_return_message_content is not None:  # Check if an OP_RETURN message exists
                                 embed.add_field(name="Burn Messages", value=op_return_message_content, inline=False)
                             embed.add_field(name="Burned coins in this block", value=str(total_burned_coins_this_block), inline=False)
                             embed.add_field(name="Total burned coins", value=str(global_total_burned_coins), inline=False)
