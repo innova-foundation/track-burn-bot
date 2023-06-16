@@ -124,14 +124,21 @@ async def burn_check():
                         if scriptPubKey.startswith('OP_RETURN'):
                             # Get the op_return_message
                             op_return_hex = scriptPubKey.replace('OP_RETURN ', '')
-                            op_return_message = bytes.fromhex(op_return_hex).decode('utf-8')
+                            op_return_message = None
+                            # Add a check for empty message
+                            if op_return_hex:
+                                try:
+                                    op_return_message = bytes.fromhex(op_return_hex).decode('utf-8')
+                                except ValueError as ve:
+                                    print(f"Error decoding OP_RETURN message from hex: {ve}")
 
                             # Add the value of this output to the total burned coins
                             total_burned_coins_this_block += vout['value']
 
                             # Add the burn transaction ID and op_return message to the lists
                             burn_txid_list.append(txid)
-                            op_return_message_list.append(op_return_message)
+                            op_return_message_list.append(op_return_message if op_return_message is not None else "No message")
+
 
                 # Reset the variable to hold the message content
                 burn_txids = ""
