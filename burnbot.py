@@ -101,6 +101,10 @@ async def burn_check():
                     response_json = await response.json()
                     block = response_json['result']
 
+                # Initialize empty lists to store the burn transactions and their corresponding op_return messages
+                burn_txid_list = []
+                op_return_message_list = []
+
                 # Iterate through each transaction in the block
                 for txid in block['tx']:
                     total_op_return_value = 0  # Reset for each transaction
@@ -123,9 +127,20 @@ async def burn_check():
                             op_return_message = bytes.fromhex(op_return_hex).decode('utf-8')
 
                             # Add the value of this output to the total burned coins
-                            total_burned_coins_this_block += vout['value']  # Was: total_op_return_value
+                            total_burned_coins_this_block += vout['value']
 
-                            burn_txid_this_block = txid
+                            # Add the burn transaction ID and op_return message to the lists
+                            burn_txid_list.append(txid)
+                            op_return_message_list.append(op_return_message)
+
+                # Reset the variable to hold the message content
+                burn_txids = ""
+                op_return_message_content = ""
+
+                # Iterate through the list of burn transactions and their op_return messages
+                for i in range(len(burn_txid_list)):
+                    burn_txids += "\nTransaction ID: " + burn_txid_list[i]
+                    op_return_message_content += "\nBurn Message: " + op_return_message_list[i]
 
                 if total_burned_coins_this_block > 0:
                     global_total_burned_coins += total_burned_coins_this_block
@@ -147,9 +162,9 @@ async def burn_check():
                             embed=discord.Embed(title="Burn transaction detected!", color=0x01619c)
                             embed.add_field(name="Block number", value=str(latest_block), inline=False)
                             embed.add_field(name="Block hash", value=str(block_hash), inline=False)
-                            embed.add_field(name="Transaction ID", value=str(burn_txid_this_block), inline=False)
+                            embed.add_field(name="Transaction IDs", value=burn_txids, inline=False)
                             if op_return_message is not None:  # Check if an OP_RETURN message exists
-                                embed.add_field(name="Burn Message", value=(op_return_message), inline=False)
+                                embed.add_field(name="Burn Messages", value=op_return_message_content, inline=False)
                             embed.add_field(name="Burned coins in this block", value=str(total_burned_coins_this_block), inline=False)
                             embed.add_field(name="Total burned coins", value=str(global_total_burned_coins), inline=False)
                             await channel_1.send(embed=embed)
@@ -163,8 +178,8 @@ async def burn_check():
                         await channel_2.send(f'Burn transaction detected!\n'
                             f'Block number: {latest_block}\n'
                             f'Block hash: {block_hash}\n'
-                            f'Transaction ID: {burn_txid_this_block}\n'
-                            f'Burn Message: {op_return_message}\n'
+                            f'Transaction IDs: {burn_txids}\n'
+                            f'Burn Message: {op_return_message_content}\n'
                             f'Burned coins in this block: {total_burned_coins_this_block}\n'
                             f'Total burned coins: {global_total_burned_coins}')  # Comment out ending here if you want only one channel
 
