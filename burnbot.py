@@ -146,9 +146,15 @@ async def burn_check():
 
                 # Iterate through the list of burn transactions and their op_return messages
                 for i in range(len(burn_txid_list)):
-                    burn_txids += f"\n{i+1}: {burn_txid_list[i]}"
+                    txid_link = f"https://chainz.cryptoid.info/inn/tx.dws?{burn_txid_list[i]}.htm" # Change to your blockchain explorer
+                    burn_txids += f"\n{i+1}: [{burn_txid_list[i]}]({txid_link})"
                     op_return_message_content += f"\n{i+1}: {op_return_message_list[i]}"
 
+
+                # Make block hash and block number links clickable
+                block_hash_link = f"https://chainz.cryptoid.info/inn/block.dws?{block_hash}.htm"
+                block_number_link = f"https://chainz.cryptoid.info/inn/block.dws?{current_block}.htm"
+                burn_total_url = 'https://chainz.cryptoid.info/inn/address.dws?op_return.htm'
 
                 if total_burned_coins_this_block > 0:
                     global_total_burned_coins += total_burned_coins_this_block
@@ -168,13 +174,13 @@ async def burn_check():
                         try:
                             # Step 2: Validate the embed format. Convert the values to string before passing to the add_field method.
                             embed=discord.Embed(title="Burn transaction detected!", color=0x01619c)
-                            embed.add_field(name="Block number", value=str(latest_block), inline=False)
-                            embed.add_field(name="Block hash", value=str(block_hash), inline=False)
+                            embed.add_field(name="Block number", value=f"[{current_block}]({block_number_link})", inline=False)
+                            embed.add_field(name="Block hash", value=f"[{block_hash}]({block_hash_link})", inline=False)
                             embed.add_field(name="Transaction IDs", value=burn_txids, inline=False)
                             if op_return_message_content is not None:  # Check if an OP_RETURN message exists
                                 embed.add_field(name="Burn Messages", value=op_return_message_content, inline=False)
                             embed.add_field(name="Burned coins in this block", value=str(total_burned_coins_this_block), inline=False)
-                            embed.add_field(name="Total burned coins", value=str(global_total_burned_coins), inline=False)
+                            embed.add_field(name="Total burned coins", value=f"[{str(global_total_burned_coins)}]({burn_total_url})", inline=False)
                             await channel_1.send(embed=embed)
                         except Exception as e:
                             print(f'Exception occurred while creating/sending the embed: {e}')  # Debug line
@@ -184,8 +190,8 @@ async def burn_check():
                     else:
                         print(f'Sending message to channel {channel_2.id}')  # Debug line
                         await channel_2.send(f'Burn transaction detected!\n'
-                            f'Block number: {latest_block}\n'
-                            f'Block hash: {block_hash}\n'
+                            f'Block number: [{current_block}]({block_number_link})\n'
+                            f'Block hash: [{block_hash}]({block_hash_link})\n'
                             f'Transaction IDs: {burn_txids}\n'
                             f'Burn Message: {op_return_message_content}\n'
                             f'Burned coins in this block: {total_burned_coins_this_block}\n'
