@@ -101,6 +101,10 @@ async def burn_check():
                     response_json = await response.json()
                     block = response_json['result']
 
+                # Initialize empty lists to store the burn transactions and their corresponding op_return messages
+                burn_txid_list = []
+                op_return_message_list = []
+
                 # Iterate through each transaction in the block
                 for txid in block['tx']:
                     total_op_return_value = 0  # Reset for each transaction
@@ -120,12 +124,37 @@ async def burn_check():
                         if scriptPubKey.startswith('OP_RETURN'):
                             # Get the op_return_message
                             op_return_hex = scriptPubKey.replace('OP_RETURN ', '')
-                            op_return_message = bytes.fromhex(op_return_hex).decode('utf-8')
+                            op_return_message = None
+                            # Add a check for empty message
+                            if op_return_hex:
+                                try:
+                                    op_return_message = bytes.fromhex(op_return_hex).decode('utf-8')
+                                except ValueError as ve:
+                                    print(f"Error decoding OP_RETURN message from hex: {ve}")
 
                             # Add the value of this output to the total burned coins
-                            total_burned_coins_this_block += vout['value']  # Was: total_op_return_value
+                            total_burned_coins_this_block += vout['value']
 
-                            burn_txid_this_block = txid
+                            # Add the burn transaction ID and op_return message to the lists
+                            burn_txid_list.append(txid)
+                            op_return_message_list.append(op_return_message if op_return_message is not None else "No message")
+
+
+                # Reset the variable to hold the message content
+                burn_txids = ""
+                op_return_message_content = ""
+
+                # Iterate through the list of burn transactions and their op_return messages
+                for i in range(len(burn_txid_list)):
+                    txid_link = f"https://chainz.cryptoid.info/inn/tx.dws?{burn_txid_list[i]}.htm" # Change to your blockchain explorer
+                    burn_txids += f"\n{i+1}: [{burn_txid_list[i]}]({txid_link})"
+                    op_return_message_content += f"\n{i+1}: {op_return_message_list[i]}"
+
+
+                # Make block hash and block number links clickable
+                block_hash_link = f"https://chainz.cryptoid.info/inn/block.dws?{block_hash}.htm"
+                block_number_link = f"https://chainz.cryptoid.info/inn/block.dws?{current_block}.htm"
+                burn_total_url = 'https://chainz.cryptoid.info/inn/address.dws?op_return.htm'
 
                 if total_burned_coins_this_block > 0:
                     global_total_burned_coins += total_burned_coins_this_block
@@ -136,37 +165,27 @@ async def burn_check():
                     channel_1 = bot.get_channel(CHANNEL_ID_1)  # Replace with your first CHANNEL_ID
                     channel_2 = bot.get_channel(CHANNEL_ID_2)  # Replace with your second CHANNEL_ID (For telegram-bridge) Comment this line out if you want only one channel
 
-                    if channel_1 is None:
-                        print('No channel found with specified ID for channel 1')  # Debug line
-                    else:
-                        print(f'Sending message to channel {channel_1.id}')  # Debug line
-
-                        # Step 1: Catch exceptions during message preparation and sending
+                    # Prepare the embed message
+                    embed=discord.Embed(title="Burn transaction detected!", color=0x01619c)
+                    embed.add_field(name="Block number", value=f"[{current_block}]({block_number_link})", inline=False)
+                    embed.add_field(name="Block hash", value=f"[{block_hash}]({block_hash_link})", inline=False)
+                    embed.add_field(name="Transaction IDs", value=burn_txids, inline=False)
+                    if op_return_message_content is not None:  # Check if an OP_RETURN message exists
+                        embed.add_field(name="Burn Messages", value=op_return_message_content, inline=False)
+                    embed.add_field(name="Burned coins in this block", value=str(total_burned_coins_this_block), inline=False)
+                    embed.add_field(name="Total burned coins", value=f"[{str(global_total_burned_coins)}]({burn_total_url})", inline=False)
+    
+                    if channel_1 is not None:
                         try:
-                            # Step 2: Validate the embed format. Convert the values to string before passing to the add_field method.
-                            embed=discord.Embed(title="Burn transaction detected!", color=0x01619c)
-                            embed.add_field(name="Block number", value=str(latest_block), inline=False)
-                            embed.add_field(name="Block hash", value=str(block_hash), inline=False)
-                            embed.add_field(name="Transaction ID", value=str(burn_txid_this_block), inline=False)
-                            if op_return_message is not None:  # Check if an OP_RETURN message exists
-                                embed.add_field(name="Burn Message", value=(op_return_message), inline=False)
-                            embed.add_field(name="Burned coins in this block", value=str(total_burned_coins_this_block), inline=False)
-                            embed.add_field(name="Total burned coins", value=str(global_total_burned_coins), inline=False)
                             await channel_1.send(embed=embed)
                         except Exception as e:
                             print(f'Exception occurred while creating/sending the embed: {e}')  # Debug line
 
-                    if channel_2 is None:  # Comment out starting here if you want only one channel
-                        print('No channel found with specified ID for channel 2')  # Debug line
-                    else:
-                        print(f'Sending message to channel {channel_2.id}')  # Debug line
-                        await channel_2.send(f'Burn transaction detected!\n'
-                            f'Block number: {latest_block}\n'
-                            f'Block hash: {block_hash}\n'
-                            f'Transaction ID: {burn_txid_this_block}\n'
-                            f'Burn Message: {op_return_message}\n'
-                            f'Burned coins in this block: {total_burned_coins_this_block}\n'
-                            f'Total burned coins: {global_total_burned_coins}')  # Comment out ending here if you want only one channel
+                    if channel_2 is not None: # Comment this section out if you only want one channel
+                        try:
+                            await channel_2.send(embed=embed)
+                        except Exception as e:
+                            print(f'Exception occurred while creating/sending the embed: {e}')  # Debug line
 
             # Update last processed block
             last_processed_block = current_block
